@@ -1,0 +1,83 @@
+# ==============================================================================
+#  .gitignore — Projet FreelanceHub (DevOps / Cloud)
+#  Objectif : ne JAMAIS committer de secret ni d'état Terraform.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+#  Terraform
+# ------------------------------------------------------------------------------
+# Répertoires de travail Terraform (providers, modules téléchargés)
+**/.terraform/*
+
+# Fichiers d'état : contiennent des données sensibles EN CLAIR (mot de passe RDS,
+# etc.). L'état vit dans le backend distant S3, jamais dans Git.
+*.tfstate
+*.tfstate.*
+
+# Verrou transitoire posé pendant un apply
+.terraform.tfstate.lock.info
+
+# Logs de crash
+crash.log
+crash.*.log
+
+# Fichiers de variables : susceptibles de contenir des données sensibles.
+# On ne committe que les modèles *.example ; les secrets vont dans Secrets Manager.
+*.tfvars
+*.tfvars.json
+
+# Fichiers d'override (surcharges locales non partagées)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Sorties de "terraform plan -out"
+*tfplan*
+
+# Configuration CLI Terraform locale
+.terraformrc
+terraform.rc
+
+# NB : .terraform.lock.hcl N'EST PAS ignoré — il fige les versions des providers
+# et DOIT être committé pour garantir la reproductibilité.
+
+# ------------------------------------------------------------------------------
+#  Python / FastAPI (application FreelanceHub)
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ------------------------------------------------------------------------------
+#  Secrets & variables d'environnement
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*_rsa
+*_rsa.pub
+credentials
+aws-credentials*
+
+# ------------------------------------------------------------------------------
+#  Système & éditeurs
+# ------------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/

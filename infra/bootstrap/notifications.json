@@ -1,18 +1,18 @@
 [
   {
     "Notification": { "NotificationType": "ACTUAL", "ComparisonOperator": "GREATER_THAN", "Threshold": 50, "ThresholdType": "PERCENTAGE" },
-    "Subscribers": [ { "SubscriptionType": "EMAIL", "Address": "TON_EMAIL@example.com" } ]
+    "Subscribers": [ { "SubscriptionType": "EMAIL", "Address": "adam.asseidsiddick.ensao@ump.ac.ma" } ]
   },
   {
     "Notification": { "NotificationType": "ACTUAL", "ComparisonOperator": "GREATER_THAN", "Threshold": 80, "ThresholdType": "PERCENTAGE" },
-    "Subscribers": [ { "SubscriptionType": "EMAIL", "Address": "TON_EMAIL@example.com" } ]
+    "Subscribers": [ { "SubscriptionType": "EMAIL", "Address": "adam.asseidsiddick.ensao@ump.ac.ma" } ]
   },
   {
     "Notification": { "NotificationType": "ACTUAL", "ComparisonOperator": "GREATER_THAN", "Threshold": 100, "ThresholdType": "PERCENTAGE" },
-    "Subscribers": [ { "SubscriptionType": "EMAIL", "Address": "TON_EMAIL@example.com" } ]
+    "Subscribers": [ { "SubscriptionType": "EMAIL", "Address": "adam.asseidsiddick.ensao@ump.ac.ma" } ]
   },
   {
     "Notification": { "NotificationType": "FORECASTED", "ComparisonOperator": "GREATER_THAN", "Threshold": 100, "ThresholdType": "PERCENTAGE" },
-    "Subscribers": [ { "SubscriptionType": "EMAIL", "Address": "TON_EMAIL@example.com" } ]
+    "Subscribers": [ { "SubscriptionType": "EMAIL", "Address": "adam.asseidsiddick.ensao@ump.ac.ma" } ]
   }
 ]

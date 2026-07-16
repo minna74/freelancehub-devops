@@ -1,0 +1,10 @@
+>> Backend prêt. À reporter dans le bloc backend Terraform du Bloc A :
+-----------------------------------------------------------------------
+  backend "s3" {
+    bucket         = "freelancehub-tfstate-890615325519"
+    key            = "global/terraform.tfstate"
+    region         = "eu-west-3"
+    dynamodb_table = "freelancehub-tflock"
+    encrypt        = true
+  }
+--------------

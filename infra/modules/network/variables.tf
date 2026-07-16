@@ -22,3 +22,21 @@ variable "private_subnet_cidrs" {
   description = "CIDR des subnets privés (un par AZ)"
   type        = list(string)
 }
+
+variable "db_name" {
+  description = "Nom de la base de données"
+  type        = string
+  default     = "freelancehub"
+}
+
+variable "db_username" {
+  description = "Utilisateur maître RDS"
+  type        = string
+  default     = "fhadmin"
+}
+
+variable "db_password" {
+  description = "Mot de passe maître RDS (fourni hors code, jamais commité)"
+  type        = string
+  sensitive   = true   # ← Terraform masquera cette valeur dans ses sorties
+}

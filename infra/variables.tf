@@ -33,3 +33,19 @@ variable "private_subnet_cidrs" {
   type        = list(string)
   default     = ["10.0.10.0/24", "10.0.11.0/24"]
 }
+
+variable "db_name" {
+  type    = string
+  default = "freelancehub"
+}
+
+variable "db_username" {
+  type    = string
+  default = "fhadmin"
+}
+
+variable "db_password" {
+  description = "Mot de passe maître RDS (fourni via TF_VAR_db_password)"
+  type        = string
+  sensitive   = true
+}

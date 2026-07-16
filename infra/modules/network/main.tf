@@ -218,3 +218,79 @@ resource "aws_security_group" "ecs" {
     Name = "${var.project}-ecs-sg"
   }
 }
+
+# ---------------------------------------------------------------------------
+#  Subnet group RDS : indique à RDS dans quels subnets se placer.
+#  -> les 2 subnets PRIVÉS (AZ différentes, exigé par RDS). Jamais en public.
+# ---------------------------------------------------------------------------
+resource "aws_db_subnet_group" "this" {
+  name       = "${var.project}-db-subnet-group"
+  subnet_ids = aws_subnet.private[*].id   # les 2 subnets privés d'un coup
+
+  tags = {
+    Name = "${var.project}-db-subnet-group"
+  }
+}
+
+# ---------------------------------------------------------------------------
+#  Security Group RDS : le plus verrouillé de tous.
+#  Entrée : PostgreSQL (5432) UNIQUEMENT depuis le SG des tâches ECS.
+#  Pas de règle de sortie explicite nécessaire (la base ne sort pas d'elle-même).
+# ---------------------------------------------------------------------------
+resource "aws_security_group" "rds" {
+  name        = "${var.project}-rds-sg"
+  description = "Acces PostgreSQL uniquement depuis les taches ECS"
+  vpc_id      = aws_vpc.this.id
+
+  ingress {
+    description     = "PostgreSQL depuis les taches ECS uniquement"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs.id]   # ← source = le SG ECS
+  }
+
+  egress {
+    description = "Tout le trafic sortant"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project}-rds-sg"
+  }
+}
+
+# ---------------------------------------------------------------------------
+#  Base RDS PostgreSQL.
+#  - dans les subnets privés (via le subnet group), jamais exposée
+#  - protégée par le SG rds (5432 depuis ECS uniquement)
+#  - instance minimale db.t3.micro (éligible free tier, coût maîtrisé)
+# ---------------------------------------------------------------------------
+resource "aws_db_instance" "this" {
+  identifier     = "${var.project}-db"
+  engine         = "postgres"
+  engine_version = "16"
+  instance_class = "db.t3.micro"
+
+  allocated_storage = 20            # Go (minimum)
+  storage_type      = "gp3"
+  storage_encrypted = true          # chiffrement au repos
+
+  db_name  = var.db_name
+  username = var.db_username
+  password = var.db_password
+
+  db_subnet_group_name   = aws_db_subnet_group.this.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+
+  multi_az            = false       # une seule AZ -> coût minimal (démo)
+  publicly_accessible = false       # JAMAIS accessible depuis Internet
+  skip_final_snapshot = true        # pas de snapshot au destroy (infra éphémère)
+
+  tags = {
+    Name = "${var.project}-db"
+  }
+}

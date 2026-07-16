@@ -147,3 +147,74 @@ resource "aws_route_table_association" "private" {
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private.id
 }
+
+
+# ---------------------------------------------------------------------------
+#  Security Group de l'ALB : porte d'entrée publique.
+#  Entrée : HTTP (80) et HTTPS (443) depuis Internet.
+#  Sortie : tout (il relaiera vers les tâches ECS).
+# ---------------------------------------------------------------------------
+resource "aws_security_group" "alb" {
+  name        = "${var.project}-alb-sg"
+  description = "Autorise le trafic web entrant vers l'ALB"
+  vpc_id      = aws_vpc.this.id
+
+  ingress {
+    description = "HTTPS depuis Internet"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTP depuis Internet (redirige vers HTTPS)"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Tout le trafic sortant"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project}-alb-sg"
+  }
+}
+
+# ---------------------------------------------------------------------------
+#  Security Group des tâches ECS : jamais exposées directement.
+#  Entrée : UNIQUEMENT depuis le SG de l'ALB (pas depuis Internet).
+#  Sortie : tout (image ECR, RDS, Secrets Manager, logs...).
+# ---------------------------------------------------------------------------
+resource "aws_security_group" "ecs" {
+  name        = "${var.project}-ecs-sg"
+  description = "Trafic vers les taches ECS, uniquement depuis l'ALB"
+  vpc_id      = aws_vpc.this.id
+
+  ingress {
+    description     = "Trafic applicatif depuis l'ALB uniquement"
+    from_port       = 8000
+    to_port         = 8000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]  # ← la source est un SG, pas une IP
+  }
+
+  egress {
+    description = "Tout le trafic sortant"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project}-ecs-sg"
+  }
+}

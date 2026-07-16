@@ -1,0 +1,35 @@
+variable "project" {
+  description = "Préfixe de nommage du projet"
+  type        = string
+  default     = "freelancehub"
+}
+
+variable "region" {
+  description = "Région AWS"
+  type        = string
+  default     = "eu-west-3"
+}
+
+variable "vpc_cidr" {
+  description = "Plage d'adresses du VPC"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "azs" {
+  description = "Zones de disponibilité utilisées"
+  type        = list(string)
+  default     = ["eu-west-3a", "eu-west-3b"]
+}
+
+variable "public_subnet_cidrs" {
+  description = "CIDR des subnets publics (un par AZ)"
+  type        = list(string)
+  default     = ["10.0.0.0/24", "10.0.1.0/24"]
+}
+
+variable "private_subnet_cidrs" {
+  description = "CIDR des subnets privés (un par AZ)"
+  type        = list(string)
+  default     = ["10.0.10.0/24", "10.0.11.0/24"]
+}

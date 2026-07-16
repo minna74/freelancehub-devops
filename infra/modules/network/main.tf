@@ -1,0 +1,149 @@
+# ---------------------------------------------------------------------------
+#  VPC principal
+# ---------------------------------------------------------------------------
+resource "aws_vpc" "this" {
+  cidr_block = var.vpc_cidr
+
+  # DNS activé : indispensable pour résoudre les endpoints (RDS, ECR, etc.)
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = "${var.project}-vpc"
+  }
+}
+
+# ---------------------------------------------------------------------------
+#  Subnets PUBLICS (un par AZ)
+#  map_public_ip_on_launch = true : ce qui y atterrit (ALB, NAT) est joignable
+#  et/ou route vers l'extérieur via l'Internet Gateway (ajouté en A.3).
+# ---------------------------------------------------------------------------
+resource "aws_subnet" "public" {
+  count = length(var.public_subnet_cidrs)
+
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = var.public_subnet_cidrs[count.index]
+  availability_zone       = var.azs[count.index]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "${var.project}-public-${var.azs[count.index]}"
+    Tier = "public"
+  }
+}
+
+# ---------------------------------------------------------------------------
+#  Subnets PRIVÉS (un par AZ)
+#  Aucune IP publique, aucune route vers l'IGW. C'est ici que vivront les
+#  tâches ECS et RDS. La sortie Internet passera par la NAT (A.4).
+# ---------------------------------------------------------------------------
+resource "aws_subnet" "private" {
+  count = length(var.private_subnet_cidrs)
+
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = var.private_subnet_cidrs[count.index]
+  availability_zone = var.azs[count.index]
+
+  tags = {
+    Name = "${var.project}-private-${var.azs[count.index]}"
+    Tier = "private"
+  }
+}
+
+
+# ---------------------------------------------------------------------------
+#  Internet Gateway : la "porte" entre le VPC et Internet.
+#  Sans lui, aucune ressource du VPC ne peut communiquer avec l'extérieur.
+# ---------------------------------------------------------------------------
+resource "aws_internet_gateway" "this" {
+  vpc_id = aws_vpc.this.id
+
+  tags = {
+    Name = "${var.project}-igw"
+  }
+}
+
+# ---------------------------------------------------------------------------
+#  Route table PUBLIQUE : envoie tout le trafic sortant (0.0.0.0/0) vers l'IGW.
+#  C'est CETTE route vers l'IGW qui définit un subnet comme "public".
+# ---------------------------------------------------------------------------
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.this.id
+
+  route {
+    cidr_block = "0.0.0.0/0"                 # "toute destination"
+    gateway_id = aws_internet_gateway.this.id
+  }
+
+  tags = {
+    Name = "${var.project}-public-rt"
+  }
+}
+
+# ---------------------------------------------------------------------------
+#  Association : on rattache la route table publique aux subnets publics.
+#  count : une association par subnet public (donc 2, une par AZ).
+#  C'est CETTE ligne qui rend concrètement tes subnets publics "publics".
+# ---------------------------------------------------------------------------
+resource "aws_route_table_association" "public" {
+  count = length(aws_subnet.public)
+
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
+
+# ---------------------------------------------------------------------------
+#  Elastic IP : une IP publique fixe pour la NAT Gateway.
+#  (Une NAT a besoin d'une adresse publique stable pour sortir sur Internet.)
+# ---------------------------------------------------------------------------
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  tags = {
+    Name = "${var.project}-nat-eip"
+  }
+}
+
+# ---------------------------------------------------------------------------
+#  NAT Gateway : placée dans UN subnet public (elle a besoin de l'IGW pour
+#  sortir). UNE seule NAT partagée par les deux AZ -> choix économique (ADR 0004).
+# ---------------------------------------------------------------------------
+resource "aws_nat_gateway" "this" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id   # dans le 1er subnet public
+
+  tags = {
+    Name = "${var.project}-nat"
+  }
+
+  # La NAT dépend de l'IGW : on le rend explicite par prudence.
+  depends_on = [aws_internet_gateway.this]
+}
+
+# ---------------------------------------------------------------------------
+#  Route table PRIVÉE : envoie le trafic sortant (0.0.0.0/0) vers la NAT
+#  (et non vers l'IGW). C'est ce qui distingue "privé" de "public".
+# ---------------------------------------------------------------------------
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.this.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.this.id
+  }
+
+  tags = {
+    Name = "${var.project}-private-rt"
+  }
+}
+
+# ---------------------------------------------------------------------------
+#  Association : on rattache la route table privée aux subnets privés.
+# ---------------------------------------------------------------------------
+resource "aws_route_table_association" "private" {
+  count = length(aws_subnet.private)
+
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
+}

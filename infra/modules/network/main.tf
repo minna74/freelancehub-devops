@@ -156,7 +156,7 @@ resource "aws_route_table_association" "private" {
 # ---------------------------------------------------------------------------
 resource "aws_security_group" "alb" {
   name        = "${var.project}-alb-sg"
-  description = "Autorise le trafic web entrant vers l'ALB"
+  description = "Autorise le trafic web entrant vers ALB"
   vpc_id      = aws_vpc.this.id
 
   ingress {
@@ -195,11 +195,11 @@ resource "aws_security_group" "alb" {
 # ---------------------------------------------------------------------------
 resource "aws_security_group" "ecs" {
   name        = "${var.project}-ecs-sg"
-  description = "Trafic vers les taches ECS, uniquement depuis l'ALB"
+  description = "Trafic vers les taches ECS, uniquement depuis ALB"
   vpc_id      = aws_vpc.this.id
 
   ingress {
-    description     = "Trafic applicatif depuis l'ALB uniquement"
+    description     = "Trafic applicatif depuis ALB uniquement"
     from_port       = 8000
     to_port         = 8000
     protocol        = "tcp"

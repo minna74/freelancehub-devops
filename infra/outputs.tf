@@ -12,3 +12,7 @@ output "private_subnet_ids" {
   description = "IDs des subnets privés"
   value       = module.network.private_subnet_ids
 }
+
+output "ecr_repository_url" {
+  value = module.compute.ecr_repository_url
+}

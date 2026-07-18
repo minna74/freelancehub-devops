@@ -294,3 +294,4 @@ resource "aws_db_instance" "this" {
     Name = "${var.project}-db"
   }
 }
+

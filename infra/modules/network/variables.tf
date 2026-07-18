@@ -40,3 +40,4 @@ variable "db_password" {
   type        = string
   sensitive   = true   # ← Terraform masquera cette valeur dans ses sorties
 }
+

@@ -43,3 +43,120 @@ resource "aws_ecr_lifecycle_policy" "app" {
     ]
   })
 }
+
+# ---------------------------------------------------------------------------
+#  Rôle IAM d'EXÉCUTION : utilisé par ECS lui-même (pas par ton appli) pour
+#  tirer l'image depuis ECR et écrire les logs vers CloudWatch.
+#  "Execution role" != "Task role" : l'execution role sert l'infra ECS,
+#  le task role (à venir) donnera des permissions à TON CODE (ex: Secrets Manager).
+# ---------------------------------------------------------------------------
+resource "aws_iam_role" "ecs_execution" {
+  name = "${var.project}-ecs-execution-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+
+  tags = {
+    Name = "${var.project}-ecs-execution-role"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_execution" {
+  role       = aws_iam_role.ecs_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# ---------------------------------------------------------------------------
+#  Log Group : destination des logs de l'application (stdout/stderr).
+#  Rétention limitée pour maîtriser le coût.
+# ---------------------------------------------------------------------------
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/ecs/${var.project}-api"
+  retention_in_days = 7
+
+  tags = {
+    Name = "${var.project}-api-logs"
+  }
+}
+
+# aws_ecs_task_definition
+
+resource "aws_ecs_task_definition" "app" {
+  family                   = "${var.project}-api"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = aws_iam_role.ecs_execution.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "${var.project}-api"
+      image     = "${aws_ecr_repository.app.repository_url}:v1"
+      essential = true
+
+      portMappings = [{
+        containerPort = 8000
+        protocol      = "tcp"
+      }]
+
+      environment = [
+        { name = "DB_URL", value = var.db_url }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.app.name
+          "awslogs-region"        = "eu-west-3"
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
+    }
+  ])
+
+  tags = {
+    Name = "${var.project}-api-task"
+  }
+}
+
+# ---------------------------------------------------------------------------
+#  Cluster ECS : regroupement logique des services/tâches.
+#  Avec Fargate, pas de serveurs à gérer soi-même (contrairement à EC2).
+# ---------------------------------------------------------------------------
+resource "aws_ecs_cluster" "this" {
+  name = "${var.project}-cluster"
+
+  tags = {
+    Name = "${var.project}-cluster"
+  }
+}
+
+# ---------------------------------------------------------------------------
+#  Service ECS : maintient N copies de la Task Definition en vie en continu,
+#  dans les subnets PRIVÉS (jamais exposé directement), avec le SG ecs.
+#  Pas encore de load balancer -> ajouté en B.7 (ALB).
+# ---------------------------------------------------------------------------
+resource "aws_ecs_service" "app" {
+  name            = "${var.project}-service"
+  cluster         = aws_ecs_cluster.this.id
+  task_definition = aws_ecs_task_definition.app.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = var.private_subnet_ids
+    security_groups  = [var.ecs_security_group_id]
+    assign_public_ip = false   # subnet privé -> jamais d'IP publique
+  }
+
+  tags = {
+    Name = "${var.project}-service"
+  }
+}

@@ -160,3 +160,59 @@ resource "aws_ecs_service" "app" {
     Name = "${var.project}-service"
   }
 }
+
+# ---------------------------------------------------------------------------
+#  Application Load Balancer : point d'entrée public, dans les subnets PUBLICS.
+#  "internal = false" -> Internet-facing (le défaut, explicité pour la clarté).
+# ---------------------------------------------------------------------------
+resource "aws_lb" "this" {
+  name               = "${var.project}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [var.alb_security_group_id]
+  subnets            = var.public_subnet_ids
+
+  tags = {
+    Name = "${var.project}-alb"
+  }
+}
+# ---------------------------------------------------------------------------
+#  Target Group : la "cible" vers laquelle l'ALB route le trafic.
+#  target_type = "ip" -> obligatoire pour Fargate (pas d'instances EC2 fixes).
+#  Health check sur /health -> réutilise l'endpoint qu'on a déjà (B.1).
+# ---------------------------------------------------------------------------
+resource "aws_lb_target_group" "app" {
+  name        = "${var.project}-tg"
+  port        = 8000
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  health_check {
+    path                = "/health"
+    protocol            = "HTTP"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    interval            = 30
+    timeout             = 5
+    matcher             = "200"
+  }
+
+  tags = {
+    Name = "${var.project}-tg"
+  }
+}
+# ---------------------------------------------------------------------------
+#  Listener HTTP : écoute sur le port 80, transfère tout vers le target group.
+#  HTTPS non activé pour cette démo (ADR 0005) -> "prêt à activer" avec un domaine.
+# ---------------------------------------------------------------------------
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.this.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app.arn
+  }
+}

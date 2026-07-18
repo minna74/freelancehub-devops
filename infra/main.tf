@@ -13,6 +13,7 @@ module "network" {
 
 }
 
+
 module "compute" {
   source = "./modules/compute"
 
@@ -20,4 +21,7 @@ module "compute" {
   db_url                = "postgresql://${var.db_username}:${var.db_password}@${module.network.rds_endpoint}:5432/${var.db_name}"
   private_subnet_ids    = module.network.private_subnet_ids
   ecs_security_group_id = module.network.ecs_security_group_id
+  vpc_id                = module.network.vpc_id
+  public_subnet_ids     = module.network.public_subnet_ids
+  alb_security_group_id = module.network.alb_security_group_id
 }

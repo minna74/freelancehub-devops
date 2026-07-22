@@ -16,3 +16,7 @@ output "private_subnet_ids" {
 output "ecr_repository_url" {
   value = module.compute.ecr_repository_url
 }
+
+output "app_url" {
+  value = "http://${module.compute.alb_dns_name}"
+}

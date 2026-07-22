@@ -138,28 +138,8 @@ resource "aws_ecs_cluster" "this" {
   }
 }
 
-# ---------------------------------------------------------------------------
-#  Service ECS : maintient N copies de la Task Definition en vie en continu,
-#  dans les subnets PRIVÉS (jamais exposé directement), avec le SG ecs.
-#  Pas encore de load balancer -> ajouté en B.7 (ALB).
-# ---------------------------------------------------------------------------
-resource "aws_ecs_service" "app" {
-  name            = "${var.project}-service"
-  cluster         = aws_ecs_cluster.this.id
-  task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
+# --------------------------------------------------------------------------
 
-  network_configuration {
-    subnets          = var.private_subnet_ids
-    security_groups  = [var.ecs_security_group_id]
-    assign_public_ip = false   # subnet privé -> jamais d'IP publique
-  }
-
-  tags = {
-    Name = "${var.project}-service"
-  }
-}
 
 # ---------------------------------------------------------------------------
 #  Application Load Balancer : point d'entrée public, dans les subnets PUBLICS.
@@ -216,3 +196,32 @@ resource "aws_lb_listener" "http" {
     target_group_arn = aws_lb_target_group.app.arn
   }
 }
+
+
+resource "aws_ecs_service" "app" {
+  name            = "${var.project}-service"
+  cluster         = aws_ecs_cluster.this.id
+  task_definition = aws_ecs_task_definition.app.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = var.private_subnet_ids
+    security_groups  = [var.ecs_security_group_id]
+    assign_public_ip = false   # subnet privé -> jamais d'IP publique
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.app.arn
+    container_name    = "${var.project}-api"
+    container_port    = 8000
+  }
+
+  depends_on = [aws_lb_listener.http]
+
+  tags = {
+    Name = "${var.project}-service"
+  }
+}
+
+  

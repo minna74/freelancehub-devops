@@ -20,3 +20,6 @@ output "ecr_repository_url" {
 output "app_url" {
   value = "http://${module.compute.alb_dns_name}"
 }
+output "github_actions_role_arn" {
+  value = module.compute.github_actions_role_arn
+}

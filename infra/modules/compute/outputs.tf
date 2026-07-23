@@ -10,3 +10,7 @@ output "alb_dns_name" {
   description = "URL publique de l'ALB (HTTP)"
   value       = aws_lb.this.dns_name
 }
+output "github_actions_role_arn" {
+  description = "ARN du rôle IAM assumé par GitHub Actions (OIDC)"
+  value       = aws_iam_role.github_actions.arn
+}

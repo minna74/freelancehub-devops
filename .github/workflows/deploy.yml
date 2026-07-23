@@ -24,7 +24,17 @@ jobs:
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
-
+      
+      - name: Debug - Décoder le jeton OIDC
+        run: |
+          echo "Récupération du jeton OIDC..."
+          IDTOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r '.value')
+          echo "Payload du jeton (décodé) :"
+          echo "$IDTOKEN" | cut -d'.' -f2 | base64 -d 2>/dev/null | jq '.' || echo "$IDTOKEN" | cut -d'.' -f2 | base64 --decode
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
+          ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
       # Authentification OIDC : aucune clé AWS stockée dans GitHub.
       # Le rôle est endossé temporairement via le jeton émis par GitHub.
       - name: Configurer les identifiants AWS (OIDC)

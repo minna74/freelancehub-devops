@@ -24,7 +24,7 @@ jobs:
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
-      
+
       - name: Debug - Décoder le jeton OIDC
         run: |
           echo "Récupération du jeton OIDC..."

@@ -26,3 +26,4 @@ module "compute" {
   alb_security_group_id = module.network.alb_security_group_id
 }# test du workflow terraform-plan (à retirer après validation)
 # second test - déclenchement avec changement réel infra/
+# test déclenchement final

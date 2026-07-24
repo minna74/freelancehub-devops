@@ -25,3 +25,4 @@ module "compute" {
   public_subnet_ids     = module.network.public_subnet_ids
   alb_security_group_id = module.network.alb_security_group_id
 }# test du workflow terraform-plan (à retirer après validation)
+# second test - déclenchement avec changement réel infra/

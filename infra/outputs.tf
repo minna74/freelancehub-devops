@@ -23,3 +23,6 @@ output "app_url" {
 output "github_actions_role_arn" {
   value = module.compute.github_actions_role_arn
 }
+output "github_actions_plan_role_arn" {
+  value = module.compute.github_actions_plan_role_arn
+}

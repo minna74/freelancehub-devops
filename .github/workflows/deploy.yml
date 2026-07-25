@@ -6,8 +6,8 @@ on:
     paths:
       - 'app/**'
       - '.github/workflows/deploy.yml'
+  workflow_dispatch:
 
-# Permissions nécessaires pour l'authentification OIDC (pas de clé stockée)
 permissions:
   id-token: write
   contents: read
@@ -19,14 +19,49 @@ env:
   ECS_SERVICE: freelancehub-service
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Service PostgreSQL éphémère, identifiants alignés avec tests/conftest.py
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: freelancehub
+          POSTGRES_PASSWORD: freelancehub_dev
+          POSTGRES_DB: freelancehub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer les dépendances
+        working-directory: ./app
+        run: pip install -r requirements.txt
+
+      - name: Lancer les tests avec couverture
+        working-directory: ./app
+        run: pytest --cov=app --cov-report=term-missing
+
   build-and-push:
+    needs: test   # ne démarre QUE si les tests passent
     runs-on: ubuntu-latest
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
-        
-      # Authentification OIDC : aucune clé AWS stockée dans GitHub.
-      # Le rôle est endossé temporairement via le jeton émis par GitHub.
+
       - name: Configurer les identifiants AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:

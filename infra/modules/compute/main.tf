@@ -74,7 +74,7 @@ resource "aws_iam_role_policy_attachment" "ecs_execution" {
 
 # ---------------------------------------------------------------------------
 #  Log Group : destination des logs de l'application (stdout/stderr).
-#  Rétention limitée pour maîtriser le coût.
+#  Rétention limitée pour maîtriser le coût..
 # ---------------------------------------------------------------------------
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/ecs/${var.project}-api"
@@ -98,7 +98,7 @@ resource "aws_ecs_task_definition" "app" {
   container_definitions = jsonencode([
     {
       name      = "${var.project}-api"
-      image     = "${aws_ecr_repository.app.repository_url}:v1"
+      image     = "${aws_ecr_repository.app.repository_url}:latest"
       essential = true
 
       portMappings = [{

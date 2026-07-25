@@ -32,9 +32,7 @@ resource "aws_iam_role" "github_actions" {
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-        }
-        StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:minna74/freelancehub-devops:ref:refs/heads/main"
+          "token.actions.githubusercontent.com:sub" = "repo:minna74@215708665/freelancehub-devops@1292837014:ref:refs/heads/main"
         }
       }
     }]
@@ -112,3 +110,95 @@ resource "aws_iam_role_policy" "github_actions" {
     ]
   })
 }
+# ---------------------------------------------------------------------------
+#  Rôle IAM dédié au `terraform plan` sur pull request.
+#  Trust policy plus permissive (toutes branches/PR) car un plan ne modifie
+#  jamais rien -> pas de risque même si une PR externe le déclenche.
+#  Permissions strictement en LECTURE SEULE (Describe/Get/List).
+# ---------------------------------------------------------------------------
+resource "aws_iam_role" "github_actions_plan" {
+  name = "${var.project}-github-actions-plan-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Federated = aws_iam_openid_connect_provider.github.arn
+      }
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+        }
+        StringLike = {
+          # Autorise TOUTES les branches et PR de CE dépôt (nécessaire pour
+          # que le plan tourne sur n'importe quelle pull request).
+          "token.actions.githubusercontent.com:sub" = "repo:minna74@215708665/freelancehub-devops@1292837014:*"
+        }
+      }
+    }]
+  })
+
+  tags = {
+    Name = "${var.project}-github-actions-plan-role"
+  }
+}
+
+resource "aws_iam_role_policy" "github_actions_plan" {
+  name = "${var.project}-github-actions-plan-policy"
+  role = aws_iam_role.github_actions_plan.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ReadOnlyInfra"
+        Effect = "Allow"
+        Action = [
+          "ec2:Describe*",
+          "rds:Describe*",
+          "rds:ListTagsForResource",
+          "ecs:Describe*",
+          "ecs:List*",
+          "ecr:Describe*",
+          "ecr:List*",
+          "ecr:GetAuthorizationToken",
+          "ecr:GetLifecyclePolicy",
+          "elasticloadbalancing:Describe*",
+          "iam:GetRole",
+          "iam:GetRolePolicy",
+          "iam:ListRolePolicies",
+          "iam:ListAttachedRolePolicies",
+          "iam:GetOpenIDConnectProvider",
+          "iam:ListOpenIDConnectProviders",
+          "logs:Describe*",
+          "logs:ListTagsForResource"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "TerraformStateRead"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          "arn:aws:s3:::freelancehub-tfstate-890615325519",
+          "arn:aws:s3:::freelancehub-tfstate-890615325519/*"
+        ]
+      },
+      {
+        Sid    = "TerraformLockFileOnly"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = "arn:aws:s3:::freelancehub-tfstate-890615325519/*.tflock"
+      }
+    ]
+  })
+}
+

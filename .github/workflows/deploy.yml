@@ -53,6 +53,9 @@ jobs:
 
       - name: Lancer les tests avec couverture
         working-directory: ./app
+        env:
+          DB_URL: postgresql://freelancehub:freelancehub_dev@localhost:5432/freelancehub_test
+          SECRET_KEY: test-secret-key-for-ci-only
         run: pytest --cov=app --cov-report=term-missing
 
   build-and-push:

@@ -164,6 +164,7 @@ resource "aws_iam_role_policy" "github_actions_plan" {
           "ecr:Describe*",
           "ecr:List*",
           "ecr:GetAuthorizationToken",
+          "ecr:GetLifecyclePolicy",
           "elasticloadbalancing:Describe*",
           "iam:GetRole",
           "iam:GetRolePolicy",
@@ -187,6 +188,15 @@ resource "aws_iam_role_policy" "github_actions_plan" {
           "arn:aws:s3:::freelancehub-tfstate-890615325519",
           "arn:aws:s3:::freelancehub-tfstate-890615325519/*"
         ]
+      },
+      {
+        Sid    = "TerraformLockFileOnly"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = "arn:aws:s3:::freelancehub-tfstate-890615325519/*.tflock"
       }
     ]
   })

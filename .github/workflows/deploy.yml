@@ -21,8 +21,6 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-
-    # Service PostgreSQL éphémère, identifiants alignés avec tests/conftest.py
     services:
       postgres:
         image: postgres:16
@@ -37,7 +35,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
@@ -59,7 +56,7 @@ jobs:
         run: pytest --cov=app --cov-report=term-missing
 
   build-and-push:
-    needs: test   # ne démarre QUE si les tests passent
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout du code
@@ -75,7 +72,7 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build et push de l'image Docker
+      - name: Build de l'image Docker (sans push, pour le scan)
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
@@ -83,6 +80,20 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
                         -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
                         ./app
+
+      - name: Scan de vulnérabilités avec Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: 0   # ne bloque pas encore — comportement affiné en D.3
+
+      - name: Push de l'image Docker
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 

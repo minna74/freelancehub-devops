@@ -95,20 +95,32 @@ resource "aws_ecs_task_definition" "app" {
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_execution.arn
 
+  volume {
+    name = "tmp"
+  }
+
   container_definitions = jsonencode([
     {
       name      = "${var.project}-api"
       image     = "${aws_ecr_repository.app.repository_url}:latest"
       essential = true
-     
 
       portMappings = [{
         containerPort = 8000
         protocol      = "tcp"
       }]
 
-      environment = [
-        { name = "DB_URL", value = var.db_url }
+      # Les valeurs sensibles ne sont plus en clair : ECS les récupère
+      # dynamiquement depuis Secrets Manager au démarrage du conteneur.
+      secrets = [
+        {
+          name      = "DB_URL"
+          valueFrom = aws_secretsmanager_secret.db_url.arn
+        },
+        {
+          name      = "SECRET_KEY"
+          valueFrom = aws_secretsmanager_secret.jwt_secret.arn
+        }
       ]
 
       logConfiguration = {
@@ -226,4 +238,60 @@ resource "aws_ecs_service" "app" {
   }
 }
 
+
+# ---------------------------------------------------------------------------
+#  Secrets Manager : DB_URL et SECRET_KEY, jamais en clair dans le code/state.
+# ---------------------------------------------------------------------------
+resource "aws_secretsmanager_secret" "db_url" {
+  name        = "${var.project}/db_url"
+  description = "URL de connexion PostgreSQL complete"
+  recovery_window_in_days = 0   # suppression immediate, coherent avec l'infra ephemere
+
+
+  tags = {
+    Name = "${var.project}-db-url-secret"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "db_url" {
+  secret_id     = aws_secretsmanager_secret.db_url.id
+  secret_string = var.db_url
+}
+
+resource "aws_secretsmanager_secret" "jwt_secret" {
+  name        = "${var.project}/jwt_secret"
+  description = "Cle secrete pour la signature des tokens JWT"
+  recovery_window_in_days = 0   # suppression immediate, coherent avec l'infra ephemere
+
+
+  tags = {
+    Name = "${var.project}-jwt-secret"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "jwt_secret" {
+  secret_id     = aws_secretsmanager_secret.jwt_secret.id
+  secret_string = var.jwt_secret_key
+}
+
+# ---------------------------------------------------------------------------
+#  Permission pour le role d'execution ECS : lire les deux secrets
+#  au demarrage du conteneur (et uniquement ces deux-la).
+# ---------------------------------------------------------------------------
+resource "aws_iam_role_policy" "ecs_execution_secrets" {
+  name = "${var.project}-ecs-execution-secrets-policy"
+  role = aws_iam_role.ecs_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = ["secretsmanager:GetSecretValue"]
+      Resource = [
+        aws_secretsmanager_secret.db_url.arn,
+        aws_secretsmanager_secret.jwt_secret.arn
+      ]
+    }]
+  })
+}
   

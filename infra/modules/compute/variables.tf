@@ -32,3 +32,9 @@ variable "alb_security_group_id" {
   description = "ID du Security Group ALB"
   type        = string
 }
+ 
+variable "jwt_secret_key" {
+  description = "Cle secrete JWT (fournie via TF_VAR_jwt_secret_key)"
+  type        = string
+  sensitive   = true
+}

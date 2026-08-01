@@ -250,14 +250,6 @@ resource "aws_security_group" "rds" {
     security_groups = [aws_security_group.ecs.id]   # ← source = le SG ECS
   }
 
-  egress {
-    description = "Tout le trafic sortant"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   tags = {
     Name = "${var.project}-rds-sg"
   }
@@ -274,6 +266,7 @@ resource "aws_db_instance" "this" {
   engine         = "postgres"
   engine_version = "16"
   instance_class = "db.t3.micro"
+  
 
   allocated_storage = 20            # Go (minimum)
   storage_type      = "gp3"
@@ -289,9 +282,13 @@ resource "aws_db_instance" "this" {
   multi_az            = false       # une seule AZ -> coût minimal (démo)
   publicly_accessible = false       # JAMAIS accessible depuis Internet
   skip_final_snapshot = true        # pas de snapshot au destroy (infra éphémère)
-
+  auto_minor_version_upgrade = true
   tags = {
     Name = "${var.project}-db"
   }
 }
 
+resource "aws_default_security_group" "default" {
+  vpc_id = aws_vpc.this.id
+  # Aucune règle = tout le trafic est bloqué par défaut sur ce SG orphelin
+}

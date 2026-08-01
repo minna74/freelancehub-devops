@@ -86,8 +86,8 @@ jobs:
         with:
           image-ref: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
           format: table
-          severity: CRITICAL,HIGH
-          exit-code: 0   # ne bloque pas encore — comportement affiné en D.3
+          severity: CRITICAL
+          exit-code: 1   # ne bloque pas encore — comportement affiné en D.3
 
       - name: Push de l'image Docker
         env:

@@ -100,6 +100,7 @@ resource "aws_ecs_task_definition" "app" {
       name      = "${var.project}-api"
       image     = "${aws_ecr_repository.app.repository_url}:latest"
       essential = true
+     
 
       portMappings = [{
         containerPort = 8000
@@ -151,6 +152,7 @@ resource "aws_lb" "this" {
   load_balancer_type = "application"
   security_groups    = [var.alb_security_group_id]
   subnets            = var.public_subnet_ids
+  drop_invalid_header_fields = true
 
   tags = {
     Name = "${var.project}-alb"

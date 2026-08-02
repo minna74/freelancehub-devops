@@ -1,0 +1,8 @@
+# .trivyignore
+# Vulnerabilites CRITICAL sur perl-base (paquet systeme Debian, inclus par python:3.12-slim).
+# Jamais invoque par l'application, qui est 100% Python. Aucun correctif disponible
+# a ce jour (Fixed Version vide sur les 4 CVE) -> risque residuel accepte et documente.
+CVE-2026-13221
+CVE-2026-42496
+CVE-2026-57433
+CVE-2026-8376

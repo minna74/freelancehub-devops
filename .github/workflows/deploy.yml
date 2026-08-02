@@ -88,6 +88,8 @@ jobs:
           format: table
           severity: CRITICAL
           exit-code: 1   # ne bloque pas encore — comportement affiné en D.3
+          trivyignores: .trivyignore
+
 
       - name: Push de l'image Docker
         env:

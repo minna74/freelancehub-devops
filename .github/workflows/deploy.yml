@@ -82,7 +82,7 @@ jobs:
                         ./app
 
       - name: Scan de vulnérabilités avec Trivy
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
           format: table

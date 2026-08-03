@@ -54,3 +54,8 @@ variable "jwt_secret_key" {
   type        = string
   sensitive   = true
 }
+variable "alert_email" {
+  description = "Email pour les alertes SNS"
+  type        = string
+  default     = "adam.asseidsiddick.ensao@ump.ac.ma"
+}

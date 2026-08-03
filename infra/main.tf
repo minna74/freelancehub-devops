@@ -25,5 +25,5 @@ module "compute" {
   public_subnet_ids     = module.network.public_subnet_ids
   alb_security_group_id = module.network.alb_security_group_id
   jwt_secret_key        = var.jwt_secret_key
-
+  alert_email           = var.alert_email
 }

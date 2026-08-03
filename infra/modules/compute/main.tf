@@ -294,4 +294,115 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
     }]
   })
 }
+
+# ---------------------------------------------------------------------------
+#  Dashboard CloudWatch : vue d'ensemble CPU, mémoire, requêtes, erreurs.
+#  Toutes les métriques utilisées sont natives ECS/ALB (aucun coût
+#  supplémentaire, contrairement à des métriques custom).
+# ---------------------------------------------------------------------------
+resource "aws_cloudwatch_dashboard" "main" {
+  dashboard_name = "${var.project}-dashboard"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title   = "ECS - CPU et Memoire"
+          region  = "eu-west-3"
+          metrics = [
+            ["AWS/ECS", "CPUUtilization", "ServiceName", aws_ecs_service.app.name, "ClusterName", aws_ecs_cluster.this.name],
+            ["AWS/ECS", "MemoryUtilization", "ServiceName", aws_ecs_service.app.name, "ClusterName", aws_ecs_cluster.this.name]
+          ]
+          period = 60
+          stat   = "Average"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title   = "ALB - Requetes et Erreurs 5xx"
+          region  = "eu-west-3"
+          metrics = [
+            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", aws_lb.this.arn_suffix],
+            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", aws_lb.this.arn_suffix]
+          ]
+          period = 60
+          stat   = "Sum"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          title   = "ALB - Temps de reponse"
+          region  = "eu-west-3"
+          metrics = [
+            ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", aws_lb.this.arn_suffix]
+          ]
+          period = 60
+          stat   = "Average"
+        }
+      }
+    ]
+  })
+}
   
+# ---------------------------------------------------------------------------
+#  Alarme CloudWatch : déclenchée si l'ALB renvoie 5+ erreurs 5xx en 5 minutes.
+#  Seuil calibré pour un trafic faible (démo) - ignore le bruit ponctuel,
+#  détecte un vrai incident (crash en boucle, RDS injoignable...).
+# ---------------------------------------------------------------------------
+resource "aws_cloudwatch_metric_alarm" "high_5xx" {
+  alarm_name          = "${var.project}-high-5xx-errors"
+  alarm_description   = "Declenchee si l'ALB renvoie 5 erreurs 5xx ou plus en 5 minutes"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods   = 1
+  metric_name         = "HTTPCode_Target_5XX_Count"
+  namespace           = "AWS/ApplicationELB"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 5
+
+  dimensions = {
+    LoadBalancer = aws_lb.this.arn_suffix
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = {
+    Name = "${var.project}-high-5xx-alarm"
+  }
+}
+# ---------------------------------------------------------------------------
+#  Topic SNS : point de diffusion des alertes CloudWatch.
+# ---------------------------------------------------------------------------
+resource "aws_sns_topic" "alerts" {
+  name = "${var.project}-alerts"
+
+  tags = {
+    Name = "${var.project}-alerts-topic"
+  }
+}
+
+# ---------------------------------------------------------------------------
+#  Souscription email : IMPORTANT, AWS envoie un email de confirmation
+#  après l'apply -> il faut cliquer sur le lien pour activer la réception.
+# ---------------------------------------------------------------------------
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}

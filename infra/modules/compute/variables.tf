@@ -38,3 +38,7 @@ variable "jwt_secret_key" {
   type        = string
   sensitive   = true
 }
+variable "alert_email" {
+  description = "Adresse email pour recevoir les alertes CloudWatch/SNS"
+  type        = string
+}

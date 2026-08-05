@@ -16,8 +16,8 @@ echo ">> 2. Build de l'image"
 docker build -t "${ECR_REPO}:latest" ./app
 
 echo ">> 3. Tag et push vers ECR"
-docker tag "${ECR_REPO}:latest" "${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${ECR_REPO}:v1"
-docker push "${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${ECR_REPO}:v1"
+docker tag "${ECR_REPO}:latest" "${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${ECR_REPO}:latest"
+docker push "${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${ECR_REPO}:latest"
 
 echo ">> 4. Récupération des infos réseau (subnets privés, SG ECS)"
 PRIVATE_SUBNETS=$(cd infra && terraform output -json private_subnet_ids | jq -r '. | join(",")')
